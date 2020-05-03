@@ -1,5 +1,5 @@
 # Floatie
-foatie makes things float on your desktop
+floatie makes things float on your desktop
 a bit like streaming stuff but without streaming stuff
 
 written in c#, for .NET 5
