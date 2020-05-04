@@ -31,7 +31,7 @@ namespace Floatie
             foreach (var arg in args)
             {
                 var cont = AddNewContainer();
-                cont.loadImage(arg);
+                cont.LoadImage(arg);
             }
 
         }
@@ -44,17 +44,27 @@ namespace Floatie
             this.ShowInTaskbar = false;
 
             ContextMenuStrip cms = new ContextMenuStrip();
-            cms.Items.Add("New floatie from Clipboard", null, new EventHandler((ob, ev) =>
+            cms.Items.Add("New floatie from clipboard", null, new EventHandler((ob, ev) =>
             {
                 var cont = AddNewContainer();
                 cont.LoadFromClipboard();
             }));
 
-            cms.Items.Add(new ToolStripSeparator());
-
             cms.Items.Add("New blank floatie", null, new EventHandler((ob, ev) =>
             {
                 AddNewContainer();
+            }));
+
+            cms.Items.Add(new ToolStripSeparator());
+
+            cms.Items.Add("New text floatie", null, new EventHandler((ob, ev) =>
+            {
+                LoadText();
+            }));
+
+            cms.Items.Add("New capture floatie", null, new EventHandler((ob, ev) =>
+            {
+                LoadCapture();
             }));
 
             cms.Items.Add("New censor floatie", null, new EventHandler((ob, ev) =>
@@ -91,7 +101,7 @@ namespace Floatie
             {
                 foreach (var cont in containers)
                 {
-                    if (cont.ScramblerActive || cont.CensorActive || (cont.imgData == null && cont.Web == null))
+                    if (cont.ScramblerActive || cont.CensorActive || cont.content == null || (cont.content.imgData == null && cont.TextData == null))
                     {
                         cont.destroyOnClose = true;
                         cont.Close();
@@ -124,7 +134,13 @@ namespace Floatie
             return cont;
         }
 
-        private void systray_DoubleClick(object sender, EventArgs e) => AddNewContainer();
+        private void systray_DoubleClick(object sender, EventArgs e)
+        {
+            var cont = AddNewContainer();
+
+            //if (Clipboard.ContainsText() || Clipboard.ContainsImage() || Clipboard.ContainsFileDropList())
+            //    cont.LoadFromClipboard();
+        }
 
         public void ShowAllFloaties()
         {
@@ -155,6 +171,16 @@ namespace Floatie
             AddNewContainer().LoadCensor();
         }
 
+        public void LoadText()
+        {
+            AddNewContainer().LoadText();
+        }
+
+        public void LoadCapture()
+        {
+            AddNewContainer().LoadCapture();
+        }
+
         public void LoadScrambler()
         {
             CloseAllScramblers();
@@ -165,14 +191,14 @@ namespace Floatie
         public void CloseAllScramblers()
         {
             List<Container> unregister = new List<Container>();
-            foreach (var scrm in containers.Where(it => it.ScramblerActive))
+            foreach (var scrm in containers.Where(it => it.content != null && (it.content is ScramblerContent || it.content is ScramblerTargetContent)))
                 unregister.Add(scrm);
 
             foreach (var scrm in unregister)
             {
                 try
                 {
-                    scrm.ScramblerTimer.Stop();
+                    (scrm.content as ScramblerContent)?.ScramblerTimer.Stop();
                     scrm.Close();
                     containers.Remove(scrm);
                     scrm.Dispose();

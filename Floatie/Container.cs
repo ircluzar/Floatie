@@ -1,9 +1,9 @@
-﻿using CefSharp.WinForms;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -32,20 +32,24 @@ namespace Floatie
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         public static extern bool ReleaseCapture();
 
+
         public string ID;
+        public Content content = null;
+
 
         public Image imgDropPic = ((System.Drawing.Icon)(new System.ComponentModel.ComponentResourceManager(typeof(Container)).GetObject("$this.Icon"))).ToBitmap();
-        public Image imgData;
-        public ChromiumWebBrowser browser = null;
 
-        Point lastKnownMouseLocation = new Point(0, 0);
+        System.Drawing.Point lastKnownMouseLocation = new Point(0, 0);
         bool ImageJustLoaded = true;
+
+        public Color? ImageColorKey = null;
+        public Color? TextColor = null;
 
         public bool Locked = false;
         public bool AspectRatio = true;
         public bool ScramblerActive = false;
         public bool CensorActive = false;
-        public string Web = null;
+        public string TextData = null;
 
         private bool _DisplayHeader = false;
         public bool DisplayHeader
@@ -74,9 +78,8 @@ namespace Floatie
         }
 
 
-        public bool ScramblerTarget = false;
         public Timer ViewDisplayTimer = new Timer();
-        public Timer ScramblerTimer = new Timer();
+
 
         public Container(string path = null, bool setForLoading = false)
         {
@@ -94,10 +97,6 @@ namespace Floatie
                 InitContainer(setForLoading);
             }
 
-            
-
-
-
         }
 
         public void InitContainer(bool setForLoading)
@@ -106,7 +105,7 @@ namespace Floatie
             this.DoubleBuffered = true;
             this.FormBorderStyle = FormBorderStyle.None;
 
-            ViewDisplayTimer.Interval = 666;
+            ViewDisplayTimer.Interval = 1234;
             ViewDisplayTimer.Tick += ViewDisplayTimer_Tick;
         }
 
@@ -117,145 +116,16 @@ namespace Floatie
             this.FormBorderStyle = FormBorderStyle.None;
 
             if (path != null)
-            {
-                loadImage(path);
-            }
+                LoadImage(path);
             else
-            {
                 pnDrag.BackgroundImage = imgDropPic;
-            }
 
             ViewDisplayTimer.Interval = 666;
             ViewDisplayTimer.Tick += ViewDisplayTimer_Tick;
         }
 
-        public void LoadCensor()
-        {
-            this.Hide();
 
-            var bmp = new Bitmap(1, 1);
-            bmp.SetPixel(0, 0, Color.Black);
-            loadImage(bmp);
-            AspectRatio = false;
-            CensorActive = true;
-            TopMost = true;
-            Size = new Size(256, 64);
-
-            this.Show();
-        }
-
-        public void LoadScrambler()
-        {
-
-            this.Hide();
-
-            ScramblerTimer.Interval = 35;
-            ScramblerTimer.Tick += ScramblerTimer_Tick;
-            ScramblerTimer.Start();
-
-            pnDrag.BackgroundImage = null;
-            BackColor = Color.FromArgb(32, 32, 32);
-            TransparencyKey = Color.FromArgb(32, 32, 32);
-
-            ScramblerActive = true;
-
-            Width = 256;
-            Height = 64;
-
-            this.TopMost = true;
-            this.Show();
-        }
-
-        internal void LoadScramblerTarget()
-        {
-            this.Hide();
-
-            pnDrag.BackgroundImage = null;
-            BackColor = Color.FromArgb(32, 32, 32);
-
-            ScramblerTarget = true;
-            ScramblerActive = true;
-
-            Width = 256;
-            Height = 64;
-
-            this.Show();
-        }
-
-        Bitmap ScramblerBitmap = null;
-        private void ScramblerTimer_Tick(object sender, EventArgs e)
-        {
-            Color ScrambleColor = Color.FromArgb(1, 0, 2);
-            Color ScrambleColor2 = Color.FromArgb(254, 255, 253);
-            var brush1 = new SolidBrush(ScrambleColor);
-            var brush2 = new SolidBrush(ScrambleColor2);
-
-            Bitmap bmp = new Bitmap(Width, Height);
-            List<(int x, int y)> pixelCoords = new List<(int x, int y)>();
-
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                for (int x = 0; x < Width; x++)
-                    for (int y = 0; y < Height; y++)
-                    {
-                        if (Main.rnd.Next(0, 20) > 6)
-                        {
-                            if (Main.rnd.Next(0, 20) > 7)
-                                g.FillRectangle(brush1, x, y, 1, 2);
-                            //bmp.SetPixel(x, y, ScrambleColor);
-                            else
-                                g.FillRectangle(brush2, x, y, 2, 1);
-                            //bmp.SetPixel(x, y, ScrambleColor2);
-
-                        }
-                        else
-                            pixelCoords.Add((x, y));
-
-                    }
-            }
-
-            Bitmap shotBmp = new Bitmap(Width, Height);
-            Rectangle shotBounds = new Rectangle(Location.X, Location.Y, Width, Height);
-            using (Graphics g = Graphics.FromImage(shotBmp))
-                g.CopyFromScreen(shotBounds.Location, Point.Empty, shotBounds.Size);
-
-
-            this.BackgroundImage = bmp;
-
-            var TargetScreen = Main.containers.FirstOrDefault(it => it.ScramblerTarget);
-            if(TargetScreen != null)
-            {
-                if (ScramblerBitmap == null || TargetScreen.Size != Size )
-                {
-                    TargetScreen.Size = Size;
-                    ScramblerBitmap = new Bitmap(Width, Height);
-                }
-
-                //foreach (var coord in pixelCoords)
-                //{
-                //    Color pixel = shotBmp.GetPixel(coord.x, coord.y);
-                //    if(pixel != ScrambleColor && pixel != ScrambleColor2)
-                //        ScramblerBitmap.SetPixel(coord.x, coord.y, pixel);
-                //}
-                using (Graphics g = Graphics.FromImage(ScramblerBitmap))
-                    foreach (var coord in pixelCoords)
-                        {
-                            Color pixel = shotBmp.GetPixel(coord.x, coord.y);
-                            if (pixel != ScrambleColor && pixel != ScrambleColor2)
-                                g.FillRectangle(new SolidBrush(pixel), coord.x, coord.y, 1, 1);
-                        //ScramblerBitmap.SetPixel(coord.x, coord.y, pixel);
-                    }
-
-                if (Main.rnd.Next(0, 20) > 1)
-                {
-                    //TargetScreen.BackgroundImage = null;
-                   TargetScreen.BackgroundImage = ScramblerBitmap;
-                   TargetScreen.Refresh();
-                }
-            }
-        }
-
-        private void ViewDisplayTimer_Reload()
+        public void ViewDisplayTimer_Reload()
         {
             ViewDisplayTimer.Stop();
             ViewDisplayTimer.Start();
@@ -274,90 +144,83 @@ namespace Floatie
             pnDisplayHeader.Visible = false;
         }
 
-        public void loadImage(Image img, bool isLoadingContainer = false)
+        public void LoadImage(Image img, bool isLoadingContainer = false)
         {
-            imgData = img;
-            displayImage(isLoadingContainer);
+            if (content == null)
+                content = new ImageContent(this, img, isLoadingContainer);
         }
-        public void loadImage(byte[] data)
+        public void LoadImage(byte[] data)
         {
-            try
-            {
-                MemoryStream stream = new MemoryStream(data);
-                imgData = Image.FromStream(stream);
-                displayImage();
-            }
-            catch { } //bugs don't exist
+            if (content == null)
+                content = new ImageContent(this, data);
         }
-        public void loadImage(string path)
+
+        public void LoadFile(string path)
         {
             try
             {
-                Image img;
-                using (var bmpTemp = new Bitmap(path))
-                {
-                    img = new Bitmap(bmpTemp);
-                }
 
-                //imgData = Image.FromFile(path);
-                imgData = img;
-                displayImage();
+                var ext = path.Substring(path.LastIndexOf('.') + 1).ToUpper().Trim();
+
+                if (ext == "TXT" || ext == "JSON" || ext == "XML" || ext == "NFO" || ext == "INI")
+                    LoadText(File.ReadAllText(path));
+                else
+                    LoadImage(path);
+
             }
             catch { } //bugs don't exist
-
         }
-        public void displayImage(bool isLoadingContainer = false)
+        public void LoadImage(string path)
         {
-            this.Hide();
+            if (content == null)
+                content = new ImageContent(this,path);
+        }
 
-            pnDrag.BackgroundImage = null;
 
-            this.BackgroundImage = imgData;
-            this.BackgroundImageLayout = ImageLayout.Stretch;
-            this.Width = imgData.Width;
-            this.Height = imgData.Height;
+        public void LoadCensor()
+        {
+            if (content == null)
+                content = new CensorContent(this);
+        }
 
-            int imageArea = imgData.Width * imgData.Height;
-            var scrBounds = Screen.FromControl(this).Bounds;
-            int screenArea = scrBounds.Width * scrBounds.Height;
+        public void LoadText(string text = "")
+        {
+            if (content == null)
+                content = new TextContent(this, text);
+        }
 
-            if(imageArea>screenArea)
+        public void LoadCapture()
+        {
+            if (content == null)
+                content = new CaptureContent(this);
+        }
+
+        public void LoadScrambler()
+        {
+            if (content == null)
+                content = new ScramblerContent(this);
+        }
+
+        internal void LoadScramblerTarget()
+        {
+            if (content == null)
+                content = new ScramblerTargetContent(this);
+        }
+
+        public void loadWeb(string text, bool reloadWeb = false)
+        {
+            if (content == null)
             {
-                NormalizeImageSize(Convert.ToInt32(scrBounds.Height*0.8));
-
-                int newLocX = (scrBounds.Width / 2) - (this.Width / 2);
-                int newLocY = (scrBounds.Height / 2) - (this.Height / 2);
-                this.Location = new Point(newLocX, newLocY);
+                content = new WebContent(this, text, reloadWeb);
+                TextData = text;
             }
-
-            if(!isLoadingContainer)
-                SaveManager.SetData(this);
-
-            this.WindowState = FormWindowState.Minimized;
-            this.Show();
-            this.WindowState = FormWindowState.Normal;
-            this.BringToFront();
-            this.Focus();
-
         }
 
-        public void NormalizeImageSize(int normalSize = 666)
-        {
-            this.Size = new Size(normalSize, normalSize);
-            EnforeAspectRatio(true);
-        }
+        public void ShowContent() => content?.ShowContent();
+        public void HideContent() => content?.HideContent();
 
-        public void showImage()
-        {
-            this.BackgroundImage = imgData;
-            this.BackgroundImageLayout = ImageLayout.Stretch;
-        }
 
-        public void hideImage()
-        {
-            this.BackgroundImage = null;
-            this.BackgroundImageLayout = ImageLayout.Stretch;
-        }
+
 
 
         int spacer => 15 + (AspectRatio ? 15 : 0); 
@@ -376,10 +239,9 @@ namespace Floatie
             {
                 ReleaseCapture();
                 SendMessage(Handle, WM_NCLBUTTONDOWN, wParam, 0);
-
             }
         }
-        private void RedirectMouseMove(object sender, MouseEventArgs e)
+        public void RedirectMouseMove(object sender, MouseEventArgs e)
         {
             Control control = (Control)sender;
             Point screenPoint = control.PointToScreen(new Point(e.X, e.Y));
@@ -403,8 +265,6 @@ namespace Floatie
 
             lastKnownMouseLocation = e.Location;
 
-            //if (!TransparencyKey.IsEmpty)
-            //if((AspectRatio || ScramblerActive) && !Locked)
             if(!Locked)
                 ViewDisplayTimer_Reload();
 
@@ -475,6 +335,13 @@ namespace Floatie
             {
                 if (e.Button == MouseButtons.Left)
                 {
+                    if(content != null && content is TextContent tc)
+                    {
+                        tc.tbText.DeselectAll();
+                        tc.tbText.ReadOnly = true;
+                        tc.tbText.ReadOnly = false;
+                    }
+
                     ReleaseCapture();
                     SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
                 }
@@ -518,7 +385,7 @@ namespace Floatie
 
                 if (this.BackgroundImage == null)
                     LoadFromClipboard();
-                else // if (!pnDrag.Visible)
+                else
                 {
                     var cont = Main.AddNewContainer();
                     cont.LoadFromClipboard();
@@ -546,13 +413,13 @@ namespace Floatie
                     {
                         if (first)
                         {
-                            loadImage(f);
+                            LoadFile(f);
                             first = !first;
                         }
-                        else // if !first
+                        else
                         {
                             var cont = Main.AddNewContainer();
-                            cont.loadImage(f);
+                            cont.LoadFile(f);
                         }
                     }
                     return;
@@ -560,37 +427,76 @@ namespace Floatie
 
                 string td = e.Data.GetData(DataFormats.Text)?.ToString(); //text drop
 
-                if (td != null && td.ToUpper().Contains("HTTP"))
+                if (td != null)
                 {
-                    var fileData = new WebClient().DownloadData(td);
-                    loadImage(fileData);
-
-                    if(imgData == null)
+                    if (td.ToUpper().StartsWith("HTTP"))
                     {
-                        loadWeb(td);
-                    }
+                        var fileData = new WebClient().DownloadData(td);
+                        LoadImage(fileData);
 
-                    return;
+                        if (content.imgData == null)
+                        {
+                            loadWeb(td);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        LoadText(td);
+                        return;
+                    }
+                    
                 }
 
             }
             catch { } //bugs dont exist
         }
 
+        public void EnforeAspectRatio(bool force = false)
+        {
+            if (content == null || content.imgData == null)
+                return;
+
+            if (force || AspectRatio)
+            {
+                var reqHeight = Convert.ToInt32((Convert.ToDecimal(content.imgData.Height) * Convert.ToDecimal(this.Width)) / Convert.ToDecimal(content.imgData.Width));
+                var complementWidth = Convert.ToInt32((Convert.ToDecimal(reqHeight) * Convert.ToDecimal(content.imgData.Width)) / Convert.ToDecimal(content.imgData.Height));
+
+                var reqWidth = Convert.ToInt32((Convert.ToDecimal(content.imgData.Width) * Convert.ToDecimal(this.Height)) / Convert.ToDecimal(content.imgData.Height));
+                var complementheight = Convert.ToInt32((Convert.ToDecimal(reqWidth) * Convert.ToDecimal(content.imgData.Height)) / Convert.ToDecimal(content.imgData.Width));
+
+                Size sizeA = new Size(complementWidth, reqHeight);
+                Size sizeB = new Size(reqWidth, complementheight);
+
+                //Size sizeA = new Size(this.Width, reqHeight);
+                //Size sizeB = new Size(reqWidth, this.Height);
+
+                if (sizeA.Width < sizeB.Width ||sizeA.Height < sizeB.Height)
+                    this.Size = sizeA;
+                else
+                    this.Size = sizeB;
+
+            }
+        }
+
         private void Container_ResizeBegin(object sender, EventArgs e)
         {
-            hideImage();
-            this.BackColor = Color.LightGray;
+            if (content != null && (content is ScramblerContent || content is CaptureContent))
+                return;
 
-            if(!ScramblerActive)
+            HideContent();
+
+            this.BackColor = Color.LightGray;
             this.Opacity = 0.5;
         }
 
         public bool destroyOnClose = false;
+
+
         private void Container_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (ScramblerActive && !ScramblerTarget)
-                Main.containers.FirstOrDefault(it => it.ScramblerTarget)?.Close();
+            if (content != null && content is ScramblerContent sc)
+                Main.containers.FirstOrDefault(it => it.content != null & it.content is ScramblerTargetContent)?.Close();
 
             if(destroyOnClose || e.CloseReason == CloseReason.UserClosing)
                 SaveManager.Destroy(this);
@@ -598,35 +504,22 @@ namespace Floatie
 
         private void Container_ResizeEnd(object sender, EventArgs e)
         {
-            showImage();
-            this.BackColor = Color.FromArgb(32, 32, 32);
-            this.Opacity = 1;
-
-            SaveManager.Update(this);
-
-            //EnforeAspectRatio();
-        }
-
-        public void EnforeAspectRatio(bool force = false)
-        {
-            if (imgData == null)
+            if (content != null && (content is ScramblerContent || content is CaptureContent))
                 return;
 
-            if (force || AspectRatio)
-            {
-                var reqHeight = (imgData.Height * this.Width) / imgData.Width;
-                var reqWidth = (imgData.Width * this.Height) / imgData.Height;
+            if(ImageColorKey != null)
+                this.BackColor = ImageColorKey.Value;
+            else
+                this.BackColor = Color.FromArgb(32, 32, 32);
 
-                Size sizeA = new Size(this.Width, reqHeight);
-                Size sizeB = new Size(reqWidth, this.Height);
+            this.Opacity = 1;
 
-                if (sizeA.Width*sizeA.Height < sizeB.Width*sizeB.Height)
-                    this.Size = sizeA;
-                else
-                    this.Size = sizeB;
-                
-            }
+            ShowContent();
+
+
+            SaveManager.Update(this);
         }
+
 
         private void pnContainer_DragEnter(object sender, DragEventArgs e)
         {
@@ -639,23 +532,32 @@ namespace Floatie
             Image img = Clipboard.GetImage();
             if (img != null)
             {
-                loadImage(img);
+                LoadImage(img);
                 return;
             }
 
             string text = Clipboard.GetText(); //will be blank if containing image data
-            if (!string.IsNullOrWhiteSpace(text) && text.ToUpper().Contains("HTTP"))
+            if (!string.IsNullOrWhiteSpace(text))
             {
-                try
+                if (text.ToUpper().StartsWith("HTTP"))
                 {
-                    var fileData = new WebClient().DownloadData(text);
-                    loadImage(fileData);
-                }
-                catch { }   //bugs don't exist
 
-                if(imgData == null)
+                    try
+                    {
+                        var fileData = new WebClient().DownloadData(text);
+                        LoadImage(fileData);
+                    }
+                    catch { }   //bugs don't exist
+
+                    if (content != null && content.imgData == null)
+                    {
+                        content = null;
+                        loadWeb(text);
+                    }
+                }
+                else
                 {
-                    loadWeb(text);
+                    LoadText(text);
                 }
 
                 return;
@@ -678,12 +580,12 @@ namespace Floatie
                             if (first)
                             {
                                 first = false;
-                                loadImage(file_name);
+                                LoadImage(file_name);
                             }
                             else
                             {
                                 var cont = Main.AddNewContainer();
-                                cont.loadImage(file_name);
+                                cont.LoadImage(file_name);
                             }
                         }
                         catch { } //bugs don't exist
@@ -698,47 +600,6 @@ namespace Floatie
 
         }
 
-        public void loadWeb(string text, bool reloadWeb = false)
-        {
-            Web = text;
-
-            if (!reloadWeb)
-            {
-                Width = 960;
-                Height = 600;
-            }
-
-            pnDrag.BackgroundImage = null;
-            browser = new ChromiumWebBrowser(text);
-
-            browser.Location = new Point(0, 0);
-            browser.Width = 960;
-            browser.Height = 600;
-
-            pnDrag.Padding = new Padding(16, 16, 16, 16);
-
-            browser.Visible = false;
-            pnDrag.Controls.Add(browser);
-            Dock = DockStyle.Fill;
-
-
-            browser.KeyboardHandler = new CustomKeyboardHandler();
-            browser.MenuHandler = new CustomMenuHandler();
-            browser.Visible = true;
-
-            browser.Show();
-
-            if (reloadWeb)
-            {
-                WindowState = FormWindowState.Minimized;
-                Show();
-                WindowState = FormWindowState.Normal;
-                BringToFront();
-                Focus();
-            }
-            else
-                SaveManager.Update(this);
-        }
 
         private void CloseContainer()
         {
@@ -748,12 +609,18 @@ namespace Floatie
         }
 
         bool requestLoadClipboard = false;
-
-
         private void Container_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.V && e.Control)
+            if (e.KeyCode == Keys.V && e.Control) //CTRL+V Calls for loading whatever from clipboard
                 requestLoadClipboard = true;
+
+            if (e.KeyCode == Keys.C && e.Control) //CTRL+C Sends image to clipboard
+            {
+                if (content != null && content.imgData != null)
+                {
+                    Clipboard.SetImage(content.imgData);
+                }
+            }
 
             if (e.KeyCode == Keys.Escape && !Locked)
                 CloseContainer();
@@ -775,52 +642,149 @@ namespace Floatie
                 top.Checked = TopMost;
                 top.Enabled = !Locked;
 
-                var paste = (cms.Items.Add("Paste from Clipboard", null, (ob, ev) =>
+                var paste = (cms.Items.Add("New floatie from clipboard", null, (ob, ev) =>
                 {
                     Main.AddNewContainer().LoadFromClipboard();
                 }) as ToolStripMenuItem);
 
-                cms.Items.Add(new ToolStripSeparator());
-
-                var norm = (cms.Items.Add("Normalize image size", null, (ob, ev) =>
+                if (content != null && content is TextContent)
                 {
-                    if (imgData != null)
+                    cms.Items.Add(new ToolStripSeparator());
+
+                    var txtContent = (TextContent)content;
+
+                    var vert = (cms.Items.Add("Show vertical scroll bar", null, (ob, ev) =>
                     {
-                        NormalizeImageSize();
+                        if (txtContent.tbText.ScrollBars == ScrollBars.Vertical)
+                            txtContent.tbText.ScrollBars = ScrollBars.None;
+                        else
+                            txtContent.tbText.ScrollBars = ScrollBars.Vertical;
 
-                        int newPosX = mousePosX - (this.Size.Width / 2);
-                        int newPosY = mousePosY - (this.Size.Height / 2);
+                    }) as ToolStripMenuItem);
+                    vert.Enabled = !Locked;
+                    vert.Checked = (txtContent.tbText.ScrollBars == ScrollBars.Vertical);
 
-                        this.Location = new Point(newPosX, newPosY);
-                    }
-                }) as ToolStripMenuItem);
-                norm.Enabled = !Locked;
-
-                var max = (cms.Items.Add("100% image size", null, (ob, ev) =>
-                {
-                    if (imgData != null)
+                    var col = (cms.Items.Add("Change background color", null, (ob, ev) =>
                     {
-                        this.Size = imgData.Size;
+                        var cd = new ColorDialog();
+                        cd.Color = Extensions.GetRandomPastelColor();
 
-                        int newPosX = mousePosX - (this.Size.Width / 2);
-                        int newPosY = mousePosY - (this.Size.Height / 2);
+                        if (cd.ShowDialog() == DialogResult.OK)
+                        {
+                            TextColor = cd.Color;
+                            txtContent.tbText.BackColor = TextColor.Value;
+                            SaveManager.Update(this);
+                        }
 
-                        this.Location = new Point(newPosX, newPosY);
-                    }
+                    }) as ToolStripMenuItem);
+                    col.Enabled = !Locked;
+                }
 
-                }) as ToolStripMenuItem);
-                max.Enabled = !Locked;
 
-                var trans = (cms.Items.Add("Set Transparent Background", null, (ob, ev) =>
+
+                if (content != null && content is ImageContent)
                 {
-                    var cd = new ColorDialog();
-                    cd.Color = Color.FromArgb(255,0,255);
+                    var imgContent = (ImageContent)content;
 
-                    if (cd.ShowDialog() == DialogResult.OK)
-                        this.TransparencyKey = cd.Color;
 
-                }) as ToolStripMenuItem);
-                trans.Enabled = !Locked;
+                    cms.Items.Add(new ToolStripSeparator());
+
+                    var copclip = (cms.Items.Add("Copy image to clipboard", null, (ob, ev) =>
+                    {
+                        if(content != null && content.imgData != null)
+                            Clipboard.SetImage(content.imgData);
+                    }) as ToolStripMenuItem);
+
+                    var simas = (cms.Items.Add("Save image as..", null, (ob, ev) =>
+                    {
+                        if (content != null && content.imgData != null)
+                        {
+
+
+                            string filename;
+                            SaveFileDialog saveFileDialog1 = new SaveFileDialog
+                            {
+                                DefaultExt = "png",
+                                Title = "PNG File",
+                                Filter = "PNG files|*.png",
+                                RestoreDirectory = true
+                            };
+                            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+                            {
+                                filename = saveFileDialog1.FileName;
+                            }
+                            else
+                                return;
+
+                            using (var fs = new FileStream(filename, FileMode.OpenOrCreate))
+                                content.imgData.Save(fs, ImageFormat.Png);
+
+                        }
+
+                    }) as ToolStripMenuItem);
+
+                    cms.Items.Add(new ToolStripSeparator());
+
+
+                    var norm = (cms.Items.Add("Normalize image size", null, (ob, ev) =>
+                    {
+                        if (content.imgData != null)
+                        {
+                            imgContent.NormalizeImageSize(this);
+
+                            int newPosX = mousePosX - (this.Size.Width / 2);
+                            int newPosY = mousePosY - (this.Size.Height / 2);
+
+                            this.Location = new Point(newPosX, newPosY);
+                        }
+                    }) as ToolStripMenuItem);
+                    norm.Enabled = !Locked;
+                
+
+                    var max = (cms.Items.Add("100% image size", null, (ob, ev) =>
+                    {
+                        if (imgContent.imgData != null)
+                        {
+                            this.Size = imgContent.imgData.Size;
+
+                            int newPosX = mousePosX - (this.Size.Width / 2);
+                            int newPosY = mousePosY - (this.Size.Height / 2);
+
+                            this.Location = new Point(newPosX, newPosY);
+                        }
+
+                    }) as ToolStripMenuItem);
+                    max.Enabled = !Locked;
+
+                    var trans = (cms.Items.Add("Set transparent background", null, (ob, ev) =>
+                    {
+                        var cd = new ColorDialog();
+                        cd.Color = Color.FromArgb(0, 0, 0);
+
+                        if (cd.ShowDialog() == DialogResult.OK)
+                        {
+                            if(cd.Color == Color.FromArgb(0, 0, 0))
+                            {
+                                Hide();
+                                BackColor = Color.FromArgb(0, 0, 0);
+                                cd.Color = Color.FromArgb(0, 0, 0);
+                                
+                            }
+
+
+                            ImageColorKey = cd.Color;
+                            this.TransparencyKey = ImageColorKey.Value;
+
+                            Show();
+
+
+                            SaveManager.Update(this);
+                        }
+
+                    }) as ToolStripMenuItem);
+                    trans.Enabled = !Locked;
+
+                }
 
                 cms.Items.Add(new ToolStripSeparator());
 
@@ -831,16 +795,19 @@ namespace Floatie
                 }) as ToolStripMenuItem);
                 locked.Checked = Locked;
 
-                var aspect = (cms.Items.Add("Fixed Aspect ratio", null, (ob, ev) =>
+                if (content != null && content is ImageContent)
                 {
-                    AspectRatio = !AspectRatio;
+                    var aspect = (cms.Items.Add("Fixed aspect ratio", null, (ob, ev) =>
+                    {
+                        AspectRatio = !AspectRatio;
 
-                    if(AspectRatio)
-                        EnforeAspectRatio();
+                        if (AspectRatio)
+                            EnforeAspectRatio();
 
-                }) as ToolStripMenuItem);
-                aspect.Checked = AspectRatio;
-                aspect.Enabled = !Locked;
+                    }) as ToolStripMenuItem);
+                    aspect.Checked = AspectRatio;
+                    aspect.Enabled = !Locked;
+                }
 
                 cms.Items.Add(new ToolStripSeparator());
 

@@ -42,6 +42,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.pnDrag.BackColor = System.Drawing.Color.Transparent;
             this.pnDrag.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.pnDrag.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnDrag.Location = new System.Drawing.Point(0, 0);
             this.pnDrag.Name = "pnDrag";
             this.pnDrag.Size = new System.Drawing.Size(256, 256);
@@ -98,9 +99,9 @@
 
         #endregion
 
-        private System.Windows.Forms.Panel pnDrag;
-        private System.Windows.Forms.Panel pnDisplayKnob;
-        private System.Windows.Forms.Panel pnDisplayHeader;
+        public System.Windows.Forms.Panel pnDrag;
+        public System.Windows.Forms.Panel pnDisplayKnob;
+        public System.Windows.Forms.Panel pnDisplayHeader;
     }
 }
 

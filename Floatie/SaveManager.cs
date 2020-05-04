@@ -21,8 +21,9 @@ namespace Floatie
         public bool Locked { get; set; }
         public bool AspectRatio { get; set; }
         public bool TopMost { get; set; }
-
-        public string Web { get; set; }
+        public string TextData { get; set; }
+        public Color? ImageColorKey { get; set; }
+        public Color? TextColor { get; set; }
 
         public SaveMeta()
         {
@@ -37,7 +38,9 @@ namespace Floatie
             Locked = cont.Locked;
             AspectRatio = cont.AspectRatio;
             TopMost = cont.TopMost;
-            Web = cont.Web;
+            TextData = cont.TextData;
+            TextColor = cont.TextColor;
+            ImageColorKey = cont.ImageColorKey;
         }
 
         public void ReloadMeta(Container cont)
@@ -48,7 +51,16 @@ namespace Floatie
             cont.Locked = Locked;
             cont.AspectRatio = AspectRatio;
             cont.TopMost = TopMost;
-            cont.Web = Web;
+            cont.TextData = TextData;
+            cont.TextColor = TextColor;
+            cont.ImageColorKey = ImageColorKey;
+
+            if (cont.ImageColorKey != null && cont.content != null && cont.content.imgData != null)
+            {
+                cont.TransparencyKey = ImageColorKey.Value;
+                if (ImageColorKey == Color.FromArgb(255, 0, 255))
+                    cont.BackColor = ImageColorKey.Value;
+            }
         }
 
         public void Save(string metaFile)
@@ -93,7 +105,6 @@ namespace Floatie
     {
         public static string appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         public static string SavePath = Path.Combine(appdata,"Floatie");
-        //public static string SavePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         public static DirectoryInfo SaveDi = new DirectoryInfo(SavePath);
 
         public static void Init()
@@ -127,12 +138,13 @@ namespace Floatie
             string dataPath = metaPath.Replace(".meta", ".dat");
 
             Container cont = Main.AddNewContainer(true);
-            SaveManager.LoadData(dataPath, cont);
 
             var sm = SaveMeta.Load(metaPath);
             sm?.ReloadMeta(cont);
+            SaveManager.LoadData(dataPath, cont);
+            sm?.ReloadMeta(cont);
 
-            if (sm == null || (cont.imgData == null && cont.Web == null))
+            if (sm == null || cont.TextData == null && (cont.content == null || (cont.content != null && cont.content.imgData == null)))
             {
                 SaveManager.Destroy(file.Name.Substring(0, file.Name.IndexOf('.')));
                 cont.destroyOnClose = true;
@@ -140,17 +152,25 @@ namespace Floatie
                 return;
             }
 
-            if (cont.Web != null)
+            if (cont.TextData != null)
             {
-                cont.loadWeb(cont.Web, true);
-                sm.ReloadMeta(cont);
+                if (cont.TextData.ToUpper().StartsWith("HTTP"))
+                {
+                    cont.loadWeb(cont.TextData, true);
+                    sm.ReloadMeta(cont);
+                }
+                else
+                {
+                    cont.LoadText(cont.TextData);
+                    sm.ReloadMeta(cont);
+                }
             }
 
         }
 
-        public static void SetData(Container cont)
+        public static void SetData(Container cont, Content content)
         {
-            SaveData(cont);
+            SaveData(content);
             SaveMetaData(cont);
         }
 
@@ -163,17 +183,11 @@ namespace Floatie
         public static void Destroy(string ID)
         {
 
-
             string metaFile = $"{ID}.meta";
             string metaPath = Path.Combine(SavePath, metaFile);
 
             string dataFile = $"{ID}.dat";
             string dataPath = Path.Combine(SavePath, dataFile);
-
-            //cont.Close();
-
-            //if (cont != null && !cont.IsDisposed)
-            //    cont.Dispose();
 
             if (File.Exists(metaPath))
                 File.Delete(metaPath);
@@ -232,23 +246,27 @@ namespace Floatie
 
 
 
-        private static void SaveData(Container cont)
+        private static void SaveData(Content content)
         {
+            if (content == null)
+                throw new Exception("You passed the container's content before the content was assigned to the value");
+
+
             try
             {
-                if (cont.imgData == null)
+                if (content.imgData == null)
                     return;
 
-                string dataFile = $"{cont.ID}.dat";
+                string dataFile = $"{content.cont.ID}.dat";
                 string dataPath = Path.Combine(SavePath, dataFile);
 
-                if (cont.CensorActive || cont.ScramblerActive)
+                if (content.cont.CensorActive || content.cont.ScramblerActive)
                 {
                     if (File.Exists(dataPath))
                         File.Delete(dataPath);
                 }
                 else
-                    cont.imgData.Save(dataPath);
+                    content.imgData.Save(dataPath);
             }
             catch { } //bugs don't exist
         }
@@ -268,7 +286,8 @@ namespace Floatie
                 if (img == null)
                     return;
 
-                cont.loadImage(img, true);
+                cont.LoadImage(img, true);
+
             }
             catch { } //bugs don't exist
         }

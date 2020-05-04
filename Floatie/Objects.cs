@@ -2,6 +2,8 @@
 using CefSharp.WinForms;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +11,8 @@ using System.Windows.Forms;
 
 namespace Floatie
 {
+
+    #region Web objects for ChromiumWebBrowser
     public class FloatieWebHelper
     {
         public static Form SyncObject;
@@ -20,7 +24,6 @@ namespace Floatie
                 a.Invoke(null, null);
         }
     }
-
     public class CustomKeyboardHandler : CefSharp.IKeyboardHandler
     {
         public bool OnKeyEvent(IWebBrowser browserControl, IBrowser browser, KeyType type, int windowsKeyCode, int nativeKeyCode, CefEventFlags modifiers, bool isSystemKey)
@@ -52,7 +55,6 @@ namespace Floatie
             return false;
         }
     }
-
     public class CustomMenuHandler : CefSharp.IContextMenuHandler
     {
         public void OnBeforeContextMenu(IWebBrowser browserControl, IBrowser browser, IFrame frame, IContextMenuParams parameters, IMenuModel model)
@@ -76,5 +78,6 @@ namespace Floatie
             return false;
         }
     }
+    #endregion
 
 }
