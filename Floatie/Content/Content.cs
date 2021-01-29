@@ -16,6 +16,8 @@ namespace Floatie
         public abstract void ShowContent();
         public abstract void HideContent();
 
+        public abstract void Close();
+
     }
 
 }

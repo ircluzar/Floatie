@@ -14,11 +14,15 @@ namespace Floatie
 {
     public partial class Main : Form
     {
+        public string TinyFloatieExe = null;
+
         public static List<Container> containers = new List<Container>();
         public static Random rnd = new Random((int)DateTime.Now.Ticks);
 
         public Main(string[] args)
         {
+
+
             InitializeComponent();
             FloatieWebHelper.SyncObject = this;
 
@@ -30,6 +34,12 @@ namespace Floatie
 
             foreach (var arg in args)
             {
+                if (arg.ToUpper().EndsWith(".EXE") && TinyFloatieExe == null)
+                {
+                    TinyFloatieExe = arg;
+                    continue;
+                }
+
                 var cont = AddNewContainer();
                 cont.LoadImage(arg);
             }
@@ -46,7 +56,7 @@ namespace Floatie
             ContextMenuStrip cms = new ContextMenuStrip();
             cms.Items.Add("New floatie from clipboard", null, new EventHandler((ob, ev) =>
             {
-                var cont = AddNewContainer();
+                var cont = AddNewContainer(true);
                 cont.LoadFromClipboard();
             }));
 
@@ -72,9 +82,19 @@ namespace Floatie
                 LoadCensor();
             }));
 
+            cms.Items.Add("New color floatie", null, new EventHandler((ob, ev) =>
+            {
+                LoadColor();
+            }));
+
             cms.Items.Add("New scrambler floatie", null, new EventHandler((ob, ev) =>
             {
                 LoadScrambler();
+            }));
+
+            cms.Items.Add("New AI floatie", null, new EventHandler((ob, ev) =>
+            {
+                LoadAi();
             }));
 
             cms.Items.Add(new ToolStripSeparator());
@@ -96,6 +116,17 @@ namespace Floatie
             }));
 
             cms.Items.Add(new ToolStripSeparator());
+
+            if (TinyFloatieExe != null)
+            {
+                cms.Items.Add("Check for update", null, new EventHandler((ob, ev) =>
+                {
+                    var psi = new ProcessStartInfo();
+                    psi.FileName = TinyFloatieExe;
+                    psi.Arguments = "-update";
+                    Process.Start(psi);
+                }));
+            }
 
             cms.Items.Add("Close", null, new EventHandler((ob, ev) =>
             {
@@ -138,8 +169,8 @@ namespace Floatie
         {
             var cont = AddNewContainer();
 
-            //if (Clipboard.ContainsText() || Clipboard.ContainsImage() || Clipboard.ContainsFileDropList())
-            //    cont.LoadFromClipboard();
+            if (Clipboard.ContainsText() || Clipboard.ContainsImage() || Clipboard.ContainsFileDropList())
+                cont.LoadFromClipboard();
         }
 
         public void ShowAllFloaties()
@@ -171,6 +202,11 @@ namespace Floatie
             AddNewContainer().LoadCensor();
         }
 
+        public void LoadColor()
+        {
+            AddNewContainer().LoadColor();
+        }
+
         public void LoadText()
         {
             AddNewContainer().LoadText();
@@ -188,6 +224,11 @@ namespace Floatie
             AddNewContainer().LoadScramblerTarget();
         }
 
+        public void LoadAi()
+        {
+            AddNewContainer().LoadAi();
+        }
+
         public void CloseAllScramblers()
         {
             List<Container> unregister = new List<Container>();
@@ -203,7 +244,7 @@ namespace Floatie
                     containers.Remove(scrm);
                     scrm.Dispose();
                 }
-                catch { } //bugs don't exist
+                catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
             }
 
         }
@@ -214,7 +255,7 @@ namespace Floatie
             {
                 Application.Restart();
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
         }
     }
 }

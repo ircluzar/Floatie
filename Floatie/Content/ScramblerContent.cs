@@ -119,6 +119,11 @@ namespace Floatie
             cont.BackgroundImage = null;
             cont.BackgroundImageLayout = ImageLayout.Stretch;
         }
+
+        public override void Close()
+        {
+
+        }
     }
 
     public class ScramblerTargetContent : Content
@@ -159,6 +164,11 @@ namespace Floatie
 
             cont.BackgroundImage = null;
             cont.BackgroundImageLayout = ImageLayout.Stretch;
+        }
+
+        public override void Close()
+        {
+
         }
     }
 }

@@ -73,7 +73,7 @@ namespace Floatie
                 formatter.Serialize(stream, this);
                 
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
             finally
             {
                 stream?.Close();
@@ -91,7 +91,7 @@ namespace Floatie
                 stream = new FileStream(metaFile, FileMode.Open);
                 sm = (SaveMeta)formatter.Deserialize(stream);
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
             finally
             {
                 stream?.Close();
@@ -104,7 +104,7 @@ namespace Floatie
     class SaveManager
     {
         public static string appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        public static string SavePath = Path.Combine(appdata,"Floatie");
+        public static string SavePath = Path.Combine(appdata,"Floatie","SaveData");
         public static DirectoryInfo SaveDi = new DirectoryInfo(SavePath);
 
         public static void Init()
@@ -179,7 +179,6 @@ namespace Floatie
             SaveMetaData(cont);
         }
 
-        public static void Destroy(Container cont) => Destroy(cont.ID.ToString());
         public static void Destroy(string ID)
         {
 
@@ -224,7 +223,7 @@ namespace Floatie
                 {
                     file.Delete();
                 }
-                catch { } //bugs don't exist
+                catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
 
             Main.Restart();
         }
@@ -268,7 +267,7 @@ namespace Floatie
                 else
                     content.imgData.Save(dataPath);
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
         }
 
         private static void LoadData(string dataPath, Container cont)
@@ -289,7 +288,7 @@ namespace Floatie
                 cont.LoadImage(img, true);
 
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
         }
     }
 }

@@ -27,7 +27,7 @@ namespace Floatie
                 imgData = img;
                 displayImage();
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
         }
 
         public ImageContent(Container _cont, byte[] data)
@@ -43,7 +43,7 @@ namespace Floatie
                 imgData = Image.FromStream(stream);
                 displayImage();
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
         }
 
         public ImageContent(Container _cont, Image img, bool isLoadingContainer)
@@ -68,6 +68,11 @@ namespace Floatie
 
             cont.BackgroundImage = null;
             cont.BackgroundImageLayout = ImageLayout.Stretch;
+        }
+
+        public override void Close()
+        {
+
         }
 
         public void displayImage(bool isLoadingContainer = false)

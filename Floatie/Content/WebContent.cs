@@ -47,6 +47,8 @@ namespace Floatie
 
             browser.Show();
 
+            cont.Show();
+
             if (reloadWeb)
             {
                 cont.WindowState = FormWindowState.Minimized;
@@ -61,15 +63,17 @@ namespace Floatie
 
         public override void ShowContent()
         {
-            //cont.BackgroundImage = imgData;
-            //cont.BackgroundImageLayout = ImageLayout.Stretch;
+
         }
 
         public override void HideContent()
         {
 
-            //cont.BackgroundImage = null;
-            //cont.BackgroundImageLayout = ImageLayout.Stretch;
+        }
+
+        public override void Close()
+        {
+
         }
     }
 

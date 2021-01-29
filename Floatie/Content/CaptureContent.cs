@@ -22,6 +22,7 @@ namespace Floatie
         public CaptureContent(Container _cont)
         {
             cont = _cont;
+            cont.content = this;
 
             var brush1 = new SolidBrush(Color.White);
             var brush2 = new SolidBrush(Color.Black);
@@ -125,6 +126,13 @@ namespace Floatie
         }
 
         public override void HideContent()
+        {
+
+            //cont.BackgroundImage = null;
+            //cont.BackgroundImageLayout = ImageLayout.Stretch;
+        }
+
+        public override void Close()
         {
 
             //cont.BackgroundImage = null;

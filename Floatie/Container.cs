@@ -162,13 +162,15 @@ namespace Floatie
 
                 var ext = path.Substring(path.LastIndexOf('.') + 1).ToUpper().Trim();
 
+                if (ext == "MP4" || ext == "WMV" || ext == "WEBM" || ext == "AVI" || ext == "MKV" || ext == "WAV" || ext == "MP3" || ext == "OGG" || ext == "OGV")
+                    LoadMedia(path);
                 if (ext == "TXT" || ext == "JSON" || ext == "XML" || ext == "NFO" || ext == "INI")
                     LoadText(File.ReadAllText(path));
                 else
                     LoadImage(path);
 
             }
-            catch { } //bugs don't exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
         }
         public void LoadImage(string path)
         {
@@ -183,6 +185,16 @@ namespace Floatie
                 content = new CensorContent(this);
         }
 
+        public void LoadColor()
+        {
+            if (content == null)
+                content = new ColorContent(this);
+        }
+        public void LoadMedia(string text = "")
+        {
+            if (content == null)
+                content = new MediaContent(this, text);
+        }
         public void LoadText(string text = "")
         {
             if (content == null)
@@ -199,6 +211,12 @@ namespace Floatie
         {
             if (content == null)
                 content = new ScramblerContent(this);
+        }
+
+        public void LoadAi()
+        {
+            if (content == null)
+                content = new AiContent(this);
         }
 
         internal void LoadScramblerTarget()
@@ -265,8 +283,30 @@ namespace Floatie
 
             lastKnownMouseLocation = e.Location;
 
-            if(!Locked)
+            //Todo, refactor into a flag for noresize
+            if(content is AiContent)
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    if (content != null && content is TextContent tc)
+                    {
+                        tc.tbText.DeselectAll();
+                        tc.tbText.ReadOnly = true;
+                        tc.tbText.ReadOnly = false;
+                    }
+
+                    ReleaseCapture();
+                    SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
+                }
+
+                return;
+            }
+
+
+
+            if (!Locked)
                 ViewDisplayTimer_Reload();
+
 
             Cursor.Current = Cursors.Default;
             var cursor = this.PointToClient(Cursor.Position);
@@ -449,7 +489,7 @@ namespace Floatie
                 }
 
             }
-            catch { } //bugs dont exist
+            catch(Exception ex) { Bugs.Exist(ex); } //bugs dont exist
         }
 
         public void EnforeAspectRatio(bool force = false)
@@ -495,11 +535,14 @@ namespace Floatie
 
         private void Container_FormClosing(object sender, FormClosingEventArgs e)
         {
+
+            content?.Close();
+
             if (content != null && content is ScramblerContent sc)
                 Main.containers.FirstOrDefault(it => it.content != null & it.content is ScramblerTargetContent)?.Close();
 
             if(destroyOnClose || e.CloseReason == CloseReason.UserClosing)
-                SaveManager.Destroy(this);
+                SaveManager.Destroy(ID);
         }
 
         private void Container_ResizeEnd(object sender, EventArgs e)
@@ -547,7 +590,7 @@ namespace Floatie
                         var fileData = new WebClient().DownloadData(text);
                         LoadImage(fileData);
                     }
-                    catch { }   //bugs don't exist
+                    catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
 
                     if (content != null && content.imgData == null)
                     {
@@ -588,7 +631,7 @@ namespace Floatie
                                 cont.LoadImage(file_name);
                             }
                         }
-                        catch { } //bugs don't exist
+                        catch(Exception ex) { Bugs.Exist(ex); } //bugs don't exist
                         
                     }
                     return;
@@ -680,7 +723,28 @@ namespace Floatie
                     col.Enabled = !Locked;
                 }
 
+                if (content != null && content is AiContent)
+                {
+                    cms.Items.Add(new ToolStripSeparator());
 
+                    var neutral = (cms.Items.Add("Neutral behavior", null, (ob, ev) =>
+                    {
+                        AskGPT2_117M.behavior = BotColoring.NEUTRAL;
+                    }) as ToolStripMenuItem);
+                    neutral.Checked = AskGPT2_117M.behavior == BotColoring.NEUTRAL;
+
+                    var happy = (cms.Items.Add("Happy behavior", null, (ob, ev) =>
+                    {
+                        AskGPT2_117M.behavior = BotColoring.HAPPY;
+                    }) as ToolStripMenuItem);
+                    happy.Checked = AskGPT2_117M.behavior == BotColoring.HAPPY;
+
+                    var toxic = (cms.Items.Add("Toxic behavior", null, (ob, ev) =>
+                    {
+                        AskGPT2_117M.behavior = BotColoring.TOXIC;
+                    }) as ToolStripMenuItem);
+                    toxic.Checked = AskGPT2_117M.behavior == BotColoring.TOXIC;
+                }
 
                 if (content != null && content is ImageContent)
                 {
